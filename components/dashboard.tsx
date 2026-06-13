@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, RefreshCw, ChevronRight, AlertTriangle } from "lucide-react";
-import { api } from "@/lib/api";
-import { useClock, useDashboardUi, type SortKey, type StatusFilter } from "@/lib/store";
+import { Search, ArrowUpDown, ChevronRight, AlertTriangle } from "lucide-react";
+import {
+  useClock,
+  useTracker,
+  useDashboardUi,
+  type SortKey,
+  type StatusFilter,
+} from "@/lib/store";
+import { useMounted } from "@/lib/use-mounted";
 import {
   alertLevel,
   compareCandidates,
@@ -12,7 +18,7 @@ import {
   formatTime,
 } from "@/lib/time";
 import { STATUS_FILTER_OPTIONS } from "@/lib/status-display";
-import type { CandidateDTO, ChallengeDTO, StatsDTO } from "@/lib/types";
+import type { StatsDTO } from "@/lib/types";
 import { StatCards } from "@/components/stat-cards";
 import { StatusBadge } from "@/components/status-badge";
 import { Countdown } from "@/components/countdown";
@@ -44,39 +50,38 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export function Dashboard() {
-  const [candidates, setCandidates] = useState<CandidateDTO[]>([]);
-  const [challenges, setChallenges] = useState<ChallengeDTO[]>([]);
-  const [stats, setStats] = useState<StatsDTO | null>(null);
-  const [loading, setLoading] = useState(true);
+  const mounted = useMounted();
+  const candidates = useTracker((s) => s.candidates);
+  const challenges = useTracker((s) => s.challenges);
 
   const { search, statusFilter, sortBy, setSearch, setStatusFilter, setSortBy } =
     useDashboardUi();
   const now = useClock((s) => s.now);
-
-  const load = useCallback(async () => {
-    try {
-      const [c, ch, s] = await Promise.all([
-        api.candidates(),
-        api.challenges(),
-        api.stats(),
-      ]);
-      setCandidates(c);
-      setChallenges(ch);
-      setStats(s);
-    } catch {
-      // surfaced elsewhere; keep last good data
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-    const id = setInterval(load, 15_000);
-    return () => clearInterval(id);
-  }, [load]);
-
   const reference = now || Date.now();
+
+  const stats = useMemo<StatsDTO>(() => {
+    const s: StatsDTO = {
+      total: candidates.length,
+      running: 0,
+      completed: 0,
+      submitted: 0,
+      selected: 0,
+      rejected: 0,
+      absent: 0,
+      notStarted: 0,
+    };
+    for (const c of candidates) {
+      const eff = effectiveStatus(c.status, c.endsAt, reference);
+      if (eff === "RUNNING") s.running++;
+      else if (eff === "COMPLETED") s.completed++;
+      else if (eff === "SUBMITTED") s.submitted++;
+      else if (eff === "SELECTED") s.selected++;
+      else if (eff === "REJECTED") s.rejected++;
+      else if (eff === "ABSENT") s.absent++;
+      else if (eff === "NOT_STARTED") s.notStarted++;
+    }
+    return s;
+  }, [candidates, reference]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -95,11 +100,6 @@ export function Dashboard() {
       .sort((a, b) => compareCandidates(a, b, sortBy));
   }, [candidates, search, statusFilter, sortBy, reference]);
 
-  function applyUpdate(updated: CandidateDTO) {
-    setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    void api.stats().then(setStats).catch(() => {});
-  }
-
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -109,18 +109,12 @@ export function Dashboard() {
             Live tracking for all design challenges.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()}>
-            <RefreshCw className="size-3.5" />
-            Refresh
-          </Button>
-          <Button render={<Link href="/candidates/new" />} size="sm">
-            Add candidate
-          </Button>
-        </div>
+        <Button render={<Link href="/candidates/new" />} size="sm">
+          Add candidate
+        </Button>
       </header>
 
-      <StatCards stats={stats} />
+      <StatCards stats={mounted ? stats : null} />
 
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -133,7 +127,7 @@ export function Dashboard() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter((v as StatusFilter) ?? "ALL")}>
           <SelectTrigger className="sm:w-44">
             <SelectValue />
           </SelectTrigger>
@@ -145,7 +139,7 @@ export function Dashboard() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+        <Select value={sortBy} onValueChange={(v) => setSortBy((v as SortKey) ?? "remaining")}>
           <SelectTrigger className="sm:w-44">
             <ArrowUpDown className="size-3.5 text-muted-foreground" />
             <SelectValue />
@@ -175,7 +169,7 @@ export function Dashboard() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && candidates.length === 0 ? (
+            {!mounted ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   Loading…
@@ -234,11 +228,7 @@ export function Dashboard() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {(c.status === "NOT_STARTED" || c.status === "ABSENT") && (
-                          <StartButton
-                            candidate={c}
-                            challenges={challenges}
-                            onStarted={applyUpdate}
-                          />
+                          <StartButton candidate={c} challenges={challenges} />
                         )}
                         <Button
                           render={<Link href={`/candidates/${c.id}`} />}
@@ -259,8 +249,9 @@ export function Dashboard() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Showing {visible.length} of {candidates.length} candidates · Timers update every second and
-        are calculated from stored start times.
+        {mounted ? `Showing ${visible.length} of ${candidates.length} candidates · ` : ""}
+        Timers update every second and are calculated from stored start times. All data is saved in
+        this browser.
       </p>
     </div>
   );

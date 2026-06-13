@@ -19,47 +19,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/api";
+import { useTracker } from "@/lib/store";
 import type { CandidateDTO, ChallengeDTO } from "@/lib/types";
 
 interface StartButtonProps {
   candidate: CandidateDTO;
   challenges: ChallengeDTO[];
-  onStarted: (updated: CandidateDTO) => void;
   size?: "sm" | "default";
 }
 
-export function StartButton({ candidate, challenges, onStarted, size = "sm" }: StartButtonProps) {
+export function StartButton({ candidate, challenges, size = "sm" }: StartButtonProps) {
+  const startChallenge = useTracker((s) => s.startChallenge);
   const [open, setOpen] = useState(false);
   const [challengeId, setChallengeId] = useState(candidate.challengeId ?? "");
-  const [loading, setLoading] = useState(false);
 
-  async function start(withChallengeId: string) {
-    setLoading(true);
-    try {
-      const updated = await api.startChallenge(candidate.id, withChallengeId);
-      onStarted(updated);
-      toast.success(`Challenge started for ${updated.name}`);
-      setOpen(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start challenge");
-    } finally {
-      setLoading(false);
-    }
+  function start(withChallengeId: string) {
+    startChallenge(candidate.id, withChallengeId);
+    toast.success(`Challenge started for ${candidate.name}`);
+    setOpen(false);
   }
 
   function handleClick() {
-    // If a challenge is already assigned, start immediately; otherwise ask.
-    if (candidate.challengeId) {
-      void start(candidate.challengeId);
-    } else {
-      setOpen(true);
-    }
+    if (candidate.challengeId) start(candidate.challengeId);
+    else setOpen(true);
   }
 
   return (
     <>
-      <Button size={size === "sm" ? "sm" : "default"} onClick={handleClick} disabled={loading}>
+      <Button size={size === "sm" ? "sm" : "default"} onClick={handleClick}>
         <Play className="size-3.5" />
         Start
       </Button>
@@ -88,7 +75,7 @@ export function StartButton({ candidate, challenges, onStarted, size = "sm" }: S
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={!challengeId || loading} onClick={() => start(challengeId)}>
+            <Button disabled={!challengeId} onClick={() => start(challengeId)}>
               <Play className="size-3.5" />
               Start timer
             </Button>

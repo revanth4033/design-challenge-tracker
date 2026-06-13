@@ -63,8 +63,10 @@ function formatMobile(value: unknown): string {
   return s;
 }
 
-export function parseWorkbook(buffer: Buffer | ArrayBuffer): ParseResult {
-  const wb = XLSX.read(buffer, { type: "buffer" });
+export function parseWorkbook(data: ArrayBuffer | Uint8Array): ParseResult {
+  // Works in the browser (no Node Buffer): read raw bytes as an array.
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  const wb = XLSX.read(bytes, { type: "array" });
   const candidates: ParsedCandidate[] = [];
   const batches = new Set<string>();
   let skipped = 0;

@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,13 +12,12 @@ import {
   AlertTriangle,
   AlarmClockOff,
   ExternalLink,
-  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
-import { useClock } from "@/lib/store";
+import { useClock, useTracker } from "@/lib/store";
+import { useMounted } from "@/lib/use-mounted";
 import { alertLevel, effectiveStatus, formatDateTime } from "@/lib/time";
-import type { CandidateDTO, ChallengeDTO, StoredStatus } from "@/lib/types";
+import type { StoredStatus } from "@/lib/types";
 import { StatusBadge } from "@/components/status-badge";
 import { Countdown } from "@/components/countdown";
 import { StartButton } from "@/components/start-button";
@@ -41,58 +39,29 @@ const STATUS_ACTIONS: {
 
 export function CandidateDetail({ id }: { id: string }) {
   const router = useRouter();
-  const [candidate, setCandidate] = useState<CandidateDTO | null>(null);
-  const [challenges, setChallenges] = useState<ChallengeDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState(false);
+  const mounted = useMounted();
+  const candidate = useTracker((s) => s.candidates.find((c) => c.id === id));
+  const challenges = useTracker((s) => s.challenges);
+  const setStatusAction = useTracker((s) => s.setStatus);
+  const deleteCandidate = useTracker((s) => s.deleteCandidate);
   const now = useClock((s) => s.now);
   const reference = now || Date.now();
 
-  const load = useCallback(async () => {
-    try {
-      const [c, ch] = await Promise.all([api.candidate(id), api.challenges()]);
-      setCandidate(c);
-      setChallenges(ch);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load candidate");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function setStatus(status: StoredStatus) {
-    setPending(true);
-    try {
-      const updated = await api.setStatus(id, status);
-      setCandidate(updated);
-      toast.success(`Marked ${status.toLowerCase()}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update status");
-    } finally {
-      setPending(false);
-    }
+  function setStatus(status: StoredStatus) {
+    setStatusAction(id, status);
+    toast.success(`Marked ${status.toLowerCase().replace("_", " ")}`);
   }
 
-  async function remove() {
+  function remove() {
     if (!confirm("Delete this candidate? This cannot be undone.")) return;
-    try {
-      await api.deleteCandidate(id);
-      toast.success("Candidate deleted");
-      router.push("/");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not delete");
-    }
+    deleteCandidate(id);
+    toast.success("Candidate deleted");
+    router.push("/");
   }
 
-  if (loading) {
+  if (!mounted) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
+      <div className="flex h-64 items-center justify-center text-muted-foreground">Loading…</div>
     );
   }
   if (!candidate) {
@@ -181,12 +150,7 @@ export function CandidateDetail({ id }: { id: string }) {
 
             {notStarted && (
               <div className="pt-1">
-                <StartButton
-                  candidate={candidate}
-                  challenges={challenges}
-                  onStarted={setCandidate}
-                  size="default"
-                />
+                <StartButton candidate={candidate} challenges={challenges} size="default" />
               </div>
             )}
           </CardContent>
@@ -225,7 +189,7 @@ export function CandidateDetail({ id }: { id: string }) {
               <Button
                 key={a.status}
                 variant={active ? "default" : (a.variant ?? "outline")}
-                disabled={pending || active}
+                disabled={active}
                 onClick={() => setStatus(a.status)}
               >
                 <Icon className="size-3.5" />

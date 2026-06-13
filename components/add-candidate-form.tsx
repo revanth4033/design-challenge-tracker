@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
-import type { ChallengeDTO } from "@/lib/types";
+import { useTracker } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,37 +43,28 @@ const FIELDS: FieldDef[] = [
 
 export function AddCandidateForm() {
   const router = useRouter();
-  const [challenges, setChallenges] = useState<ChallengeDTO[]>([]);
+  const challenges = useTracker((s) => s.challenges);
+  const addCandidate = useTracker((s) => s.addCandidate);
   const [challengeId, setChallengeId] = useState<string>("");
-  const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    api.challenges().then(setChallenges).catch(() => {});
-  }, []);
 
   function update(name: string, value: string) {
     setValues((v) => ({ ...v, [name]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!values.name?.trim()) {
       toast.error("Candidate name is required");
       return;
     }
-    setSubmitting(true);
-    try {
-      const created = await api.createCandidate({
-        ...values,
-        challengeId: challengeId || null,
-      });
-      toast.success(`${created.name} added`);
-      router.push(`/candidates/${created.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not add candidate");
-      setSubmitting(false);
-    }
+    const created = addCandidate({
+      ...values,
+      name: values.name ?? "",
+      challengeId: challengeId || null,
+    });
+    toast.success(`${created.name} added`);
+    router.push(`/candidates/${created.id}`);
   }
 
   return (
@@ -144,10 +134,7 @@ export function AddCandidateForm() {
           <Button render={<Link href="/" />} variant="outline" type="button">
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting && <Loader2 className="size-3.5 animate-spin" />}
-            Add candidate
-          </Button>
+          <Button type="submit">Add candidate</Button>
         </div>
       </form>
     </div>

@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { parseWorkbook } from "@/lib/import-excel";
+import { useTracker } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -17,6 +18,7 @@ interface ImportResult {
 
 export function ImportForm() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const importCandidates = useTracker((s) => s.importCandidates);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -31,15 +33,37 @@ export function ImportForm() {
     setResult(null);
   }
 
-  async function upload() {
+  async function importFile() {
     if (!file) return;
     setUploading(true);
     try {
-      const res = await api.importExcel(file);
-      setResult(res);
-      toast.success(`Imported ${res.created} candidate${res.created === 1 ? "" : "s"}`);
+      const buf = await file.arrayBuffer();
+      const parsed = parseWorkbook(buf);
+      if (parsed.candidates.length === 0) {
+        toast.error("No candidate rows found in the workbook.");
+        return;
+      }
+      const { created, skipped } = importCandidates(
+        parsed.candidates.map((c) => ({
+          name: c.name,
+          email: c.email,
+          mobile: c.mobile,
+          designation: c.designation,
+          totalExperience: c.totalExperience,
+          relevantExperience: c.relevantExperience,
+          location: c.location,
+          noticePeriod: c.noticePeriod,
+          portfolioUrl: c.portfolioUrl,
+          resumeUrl: c.resumeUrl,
+          batch: c.batch,
+          challengeName: c.challengeName,
+          status: c.status,
+        })),
+      );
+      setResult({ created, skipped, batches: parsed.batches, total: parsed.candidates.length });
+      toast.success(`Imported ${created} candidate${created === 1 ? "" : "s"}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Import failed");
+      toast.error(e instanceof Error ? e.message : "Could not read the Excel file");
     } finally {
       setUploading(false);
     }
@@ -60,7 +84,7 @@ export function ImportForm() {
         <h1 className="text-xl font-semibold tracking-tight">Import from Excel</h1>
         <p className="text-sm text-muted-foreground">
           Upload your tracking workbook. Columns are mapped automatically, batch sheets are
-          preserved, and challenge names are normalized.
+          preserved, and challenge names are normalized. Everything stays in this browser.
         </p>
       </div>
 
@@ -112,7 +136,7 @@ export function ImportForm() {
                 Clear
               </Button>
             )}
-            <Button onClick={upload} disabled={!file || uploading}>
+            <Button onClick={importFile} disabled={!file || uploading}>
               {uploading ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
