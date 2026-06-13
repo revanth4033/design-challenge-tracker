@@ -33,23 +33,25 @@ export function formatCountdown(ms: number | null): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-/** Human-readable time of day, e.g. "2:30 PM". */
+/** Human-readable time of day in 12-hour format, e.g. "2:30 PM". */
 export function formatTime(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Date(iso).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   });
 }
 
-/** Date + time, e.g. "Jun 13, 2:30 PM". */
+/** Date + time in 12-hour format, e.g. "Jun 13, 2:30 PM". */
 export function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   });
 }
 
