@@ -15,6 +15,7 @@ import {
   AlarmClockOff,
   ExternalLink,
   Save,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClock, useTracker } from "@/lib/store";
@@ -54,8 +55,10 @@ export function CandidateDetail({ id }: { id: string }) {
   const reference = now || Date.now();
 
   const [feedbackText, setFeedbackText] = useState("");
+  const [editingFeedback, setEditingFeedback] = useState(false);
   useEffect(() => {
     setFeedbackText(candidate?.feedback ?? "");
+    setEditingFeedback(false);
   }, [candidate?.id, candidate?.feedback]);
 
   function setStatus(status: StoredStatus) {
@@ -65,6 +68,7 @@ export function CandidateDetail({ id }: { id: string }) {
 
   function saveFeedback() {
     setFeedbackAction(id, feedbackText);
+    setEditingFeedback(false);
     toast.success("Feedback saved");
   }
 
@@ -237,18 +241,45 @@ export function CandidateDetail({ id }: { id: string }) {
           <CardTitle className="text-base">Interviewer feedback</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Textarea
-            value={feedbackText}
-            onChange={(e) => setFeedbackText(e.target.value)}
-            placeholder="Write your feedback on the candidate's submission — interview notes, strengths, concerns…"
-            className="min-h-32"
-          />
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={saveFeedback}>
-              <Save className="size-3.5" />
-              Save feedback
-            </Button>
-          </div>
+          {candidate.feedback && !editingFeedback ? (
+            <>
+              <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
+                {candidate.feedback}
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setEditingFeedback(true)}>
+                  <Pencil className="size-3.5" />
+                  Edit feedback
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Write your feedback on the candidate's submission — interview notes, strengths, concerns…"
+                className="min-h-32"
+              />
+              <div className="flex justify-end gap-2">
+                {candidate.feedback && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setFeedbackText(candidate.feedback ?? "");
+                      setEditingFeedback(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button variant="outline" onClick={saveFeedback}>
+                  <Save className="size-3.5" />
+                  Save feedback
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
