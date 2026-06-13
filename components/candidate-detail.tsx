@@ -56,6 +56,7 @@ export function CandidateDetail({ id }: { id: string }) {
   const mounted = useMounted();
   const candidate = useTracker((s) => s.candidates.find((c) => c.id === id));
   const challenges = useTracker((s) => s.challenges);
+  const loaded = useTracker((s) => s.loaded);
   const setStatusAction = useTracker((s) => s.setStatus);
   const clearStatusAction = useTracker((s) => s.clearStatus);
   const setFeedbackAction = useTracker((s) => s.setFeedback);
@@ -100,7 +101,7 @@ export function CandidateDetail({ id }: { id: string }) {
     router.push("/");
   }
 
-  if (!mounted) {
+  if (!mounted || !loaded) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">Loading…</div>
     );

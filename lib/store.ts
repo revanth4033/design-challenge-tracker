@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import { initialCandidates, initialChallenges } from "./seed-data";
+import { initialChallenges } from "./seed-data";
 import { slugify } from "./challenge-utils";
 import {
   CHALLENGE_DURATION_MINUTES,
@@ -23,9 +22,10 @@ export const useClock = create<ClockState>((set) => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Tracker store — candidates + challenges, persisted to localStorage.
-// No database, no server: the known sheet data is the seed, and every change
-// (start, status, add, import) is saved in the browser.
+// Tracker store — backed by a shared hosted database via /api/candidates.
+// Mutations update local state optimistically and persist to the server; a
+// background poll (SyncProvider) refreshes every few seconds so every device
+// sees the same live board.
 // ---------------------------------------------------------------------------
 export interface NewCandidateInput {
   name: string;
@@ -61,6 +61,9 @@ export interface ImportedCandidate {
 interface TrackerState {
   candidates: CandidateDTO[];
   challenges: ChallengeDTO[];
+  loaded: boolean;
+  error: string | null;
+  syncFromServer: () => Promise<void>;
   startChallenge: (id: string, challengeId?: string) => void;
   setStatus: (id: string, status: StoredStatus) => void;
   clearStatus: (id: string) => void;
@@ -68,7 +71,6 @@ interface TrackerState {
   addCandidate: (input: NewCandidateInput) => CandidateDTO;
   deleteCandidate: (id: string) => void;
   importCandidates: (rows: ImportedCandidate[]) => { created: number; skipped: number };
-  resetToSheet: () => void;
 }
 
 function newId(): string {
@@ -76,198 +78,213 @@ function newId(): string {
   return `cand-${Math.floor(Math.random() * 1e9)}-${Date.now()}`;
 }
 
-export const useTracker = create<TrackerState>()(
-  persist(
-    (set, get) => ({
-      candidates: initialCandidates(),
-      challenges: initialChallenges(),
+// --- server persistence helpers (fire-and-forget; the poll reconciles) ------
+async function apiUpsert(candidates: CandidateDTO[]): Promise<void> {
+  try {
+    await fetch("/api/candidates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidates }),
+    });
+  } catch {
+    // network hiccup — next poll will re-sync from the server
+  }
+}
+async function apiDelete(id: string): Promise<void> {
+  try {
+    await fetch(`/api/candidates/${id}`, { method: "DELETE" });
+  } catch {
+    /* ignore */
+  }
+}
 
-      startChallenge: (id, challengeId) => {
-        const challenges = get().challenges;
-        set((s) => ({
-          candidates: s.candidates.map((c) => {
-            if (c.id !== id) return c;
-            const chId = challengeId ?? c.challengeId;
-            const challenge = challenges.find((x) => x.id === chId) ?? c.challenge ?? null;
-            const duration = challenge?.durationMinutes ?? CHALLENGE_DURATION_MINUTES;
-            const start = new Date();
-            const end = new Date(start.getTime() + duration * 60_000);
-            return {
-              ...c,
-              challengeId: challenge?.id ?? null,
-              challenge,
-              status: "RUNNING",
-              startedAt: start.toISOString(),
-              endsAt: end.toISOString(),
-              updatedAt: start.toISOString(),
-            };
-          }),
-        }));
-      },
+export const useTracker = create<TrackerState>((set, get) => ({
+  candidates: [],
+  challenges: initialChallenges(),
+  loaded: false,
+  error: null,
 
-      setStatus: (id, status) =>
-        set((s) => ({
-          candidates: s.candidates.map((c) =>
-            c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c,
-          ),
-        })),
+  syncFromServer: async () => {
+    try {
+      const res = await fetch("/api/candidates", { cache: "no-store" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to load");
+      set({ candidates: body.candidates ?? [], loaded: true, error: null });
+    } catch (e) {
+      set({ loaded: true, error: e instanceof Error ? e.message : "Failed to load" });
+    }
+  },
 
-      setFeedback: (id, feedback) =>
-        set((s) => ({
-          candidates: s.candidates.map((c) =>
-            c.id === id
-              ? { ...c, feedback: feedback.trim() || null, updatedAt: new Date().toISOString() }
-              : c,
-          ),
-        })),
-
-      // Clear a manual status, reverting to the timer-derived state:
-      // Running if a timer exists, otherwise Not Started.
-      clearStatus: (id) =>
-        set((s) => ({
-          candidates: s.candidates.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  status: c.startedAt && c.endsAt ? "RUNNING" : "NOT_STARTED",
-                  updatedAt: new Date().toISOString(),
-                }
-              : c,
-          ),
-        })),
-
-      addCandidate: (input) => {
-        const challenge =
-          get().challenges.find((x) => x.id === input.challengeId) ?? null;
-        const now = new Date().toISOString();
-        const candidate: CandidateDTO = {
-          id: newId(),
-          name: input.name.trim(),
-          email: input.email?.trim() ?? "",
-          mobile: input.mobile?.trim() ?? "",
-          designation: input.designation?.trim() || null,
-          totalExperience: input.totalExperience?.trim() || null,
-          relevantExperience: input.relevantExperience?.trim() || null,
-          location: input.location?.trim() || null,
-          noticePeriod: input.noticePeriod?.trim() || null,
-          portfolioUrl: input.portfolioUrl?.trim() || null,
-          resumeUrl: input.resumeUrl?.trim() || null,
-          batch: input.batch?.trim() || null,
+  startChallenge: (id, challengeId) => {
+    const challenges = get().challenges;
+    let updated: CandidateDTO | undefined;
+    set((s) => ({
+      candidates: s.candidates.map((c) => {
+        if (c.id !== id) return c;
+        const chId = challengeId ?? c.challengeId;
+        const challenge = challenges.find((x) => x.id === chId) ?? c.challenge ?? null;
+        const duration = challenge?.durationMinutes ?? CHALLENGE_DURATION_MINUTES;
+        const start = new Date();
+        const end = new Date(start.getTime() + duration * 60_000);
+        updated = {
+          ...c,
           challengeId: challenge?.id ?? null,
           challenge,
-          status: "NOT_STARTED",
+          status: "RUNNING",
+          startedAt: start.toISOString(),
+          endsAt: end.toISOString(),
+          updatedAt: start.toISOString(),
+        };
+        return updated;
+      }),
+    }));
+    if (updated) void apiUpsert([updated]);
+  },
+
+  setStatus: (id, status) => {
+    let updated: CandidateDTO | undefined;
+    set((s) => ({
+      candidates: s.candidates.map((c) => {
+        if (c.id !== id) return c;
+        updated = { ...c, status, updatedAt: new Date().toISOString() };
+        return updated;
+      }),
+    }));
+    if (updated) void apiUpsert([updated]);
+  },
+
+  clearStatus: (id) => {
+    let updated: CandidateDTO | undefined;
+    set((s) => ({
+      candidates: s.candidates.map((c) => {
+        if (c.id !== id) return c;
+        updated = {
+          ...c,
+          status: c.startedAt && c.endsAt ? "RUNNING" : "NOT_STARTED",
+          updatedAt: new Date().toISOString(),
+        };
+        return updated;
+      }),
+    }));
+    if (updated) void apiUpsert([updated]);
+  },
+
+  setFeedback: (id, feedback) => {
+    let updated: CandidateDTO | undefined;
+    set((s) => ({
+      candidates: s.candidates.map((c) => {
+        if (c.id !== id) return c;
+        updated = { ...c, feedback: feedback.trim() || null, updatedAt: new Date().toISOString() };
+        return updated;
+      }),
+    }));
+    if (updated) void apiUpsert([updated]);
+  },
+
+  addCandidate: (input) => {
+    const challenge = get().challenges.find((x) => x.id === input.challengeId) ?? null;
+    const now = new Date().toISOString();
+    const candidate: CandidateDTO = {
+      id: newId(),
+      name: input.name.trim(),
+      email: input.email?.trim() ?? "",
+      mobile: input.mobile?.trim() ?? "",
+      designation: input.designation?.trim() || null,
+      totalExperience: input.totalExperience?.trim() || null,
+      relevantExperience: input.relevantExperience?.trim() || null,
+      location: input.location?.trim() || null,
+      noticePeriod: input.noticePeriod?.trim() || null,
+      portfolioUrl: input.portfolioUrl?.trim() || null,
+      resumeUrl: input.resumeUrl?.trim() || null,
+      batch: input.batch?.trim() || null,
+      challengeId: challenge?.id ?? null,
+      challenge,
+      status: "NOT_STARTED",
+      startedAt: null,
+      endsAt: null,
+      feedback: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    set((s) => ({ candidates: [candidate, ...s.candidates] }));
+    void apiUpsert([candidate]);
+    return candidate;
+  },
+
+  deleteCandidate: (id) => {
+    set((s) => ({ candidates: s.candidates.filter((c) => c.id !== id) }));
+    void apiDelete(id);
+  },
+
+  importCandidates: (rows) => {
+    let created = 0;
+    let skipped = 0;
+    const fresh: CandidateDTO[] = [];
+    set((s) => {
+      const candidates = [...s.candidates];
+      const challenges = [...s.challenges];
+      const now = new Date().toISOString();
+
+      const findOrAddChallenge = (name: string | null): ChallengeDTO | null => {
+        if (!name) return null;
+        let ch = challenges.find((c) => c.name.toLowerCase() === name.toLowerCase());
+        if (!ch) {
+          ch = {
+            id: slugify(name),
+            name,
+            slug: slugify(name),
+            description: null,
+            durationMinutes: CHALLENGE_DURATION_MINUTES,
+            active: true,
+          };
+          challenges.push(ch);
+        }
+        return ch;
+      };
+
+      for (const r of rows) {
+        const dupe = candidates.find((c) =>
+          r.email
+            ? c.email.toLowerCase() === r.email.toLowerCase()
+            : c.name.toLowerCase() === r.name.toLowerCase() && c.batch === r.batch,
+        );
+        if (dupe) {
+          skipped++;
+          continue;
+        }
+        const challenge = findOrAddChallenge(r.challengeName);
+        const candidate: CandidateDTO = {
+          id: newId(),
+          name: r.name,
+          email: r.email,
+          mobile: r.mobile,
+          designation: r.designation,
+          totalExperience: r.totalExperience,
+          relevantExperience: r.relevantExperience,
+          location: r.location,
+          noticePeriod: r.noticePeriod,
+          portfolioUrl: r.portfolioUrl,
+          resumeUrl: r.resumeUrl,
+          batch: r.batch,
+          challengeId: challenge?.id ?? null,
+          challenge,
+          status: r.status,
           startedAt: null,
           endsAt: null,
           feedback: null,
           createdAt: now,
           updatedAt: now,
         };
-        set((s) => ({ candidates: [candidate, ...s.candidates] }));
-        return candidate;
-      },
-
-      deleteCandidate: (id) =>
-        set((s) => ({ candidates: s.candidates.filter((c) => c.id !== id) })),
-
-      importCandidates: (rows) => {
-        let created = 0;
-        let skipped = 0;
-        set((s) => {
-          const candidates = [...s.candidates];
-          const challenges = [...s.challenges];
-          const now = new Date().toISOString();
-
-          const findOrAddChallenge = (name: string | null): ChallengeDTO | null => {
-            if (!name) return null;
-            let ch = challenges.find((c) => c.name.toLowerCase() === name.toLowerCase());
-            if (!ch) {
-              ch = {
-                id: slugify(name),
-                name,
-                slug: slugify(name),
-                description: null,
-                durationMinutes: CHALLENGE_DURATION_MINUTES,
-                active: true,
-              };
-              challenges.push(ch);
-            }
-            return ch;
-          };
-
-          for (const r of rows) {
-            const dupe = candidates.find((c) =>
-              r.email
-                ? c.email.toLowerCase() === r.email.toLowerCase()
-                : c.name.toLowerCase() === r.name.toLowerCase() && c.batch === r.batch,
-            );
-            if (dupe) {
-              skipped++;
-              continue;
-            }
-            const challenge = findOrAddChallenge(r.challengeName);
-            candidates.push({
-              id: newId(),
-              name: r.name,
-              email: r.email,
-              mobile: r.mobile,
-              designation: r.designation,
-              totalExperience: r.totalExperience,
-              relevantExperience: r.relevantExperience,
-              location: r.location,
-              noticePeriod: r.noticePeriod,
-              portfolioUrl: r.portfolioUrl,
-              resumeUrl: r.resumeUrl,
-              batch: r.batch,
-              challengeId: challenge?.id ?? null,
-              challenge,
-              status: r.status,
-              startedAt: null,
-              endsAt: null,
-              feedback: null,
-              createdAt: now,
-              updatedAt: now,
-            });
-            created++;
-          }
-          return { candidates, challenges };
-        });
-        return { created, skipped };
-      },
-
-      resetToSheet: () =>
-        set({ candidates: initialCandidates(), challenges: initialChallenges() }),
-    }),
-    {
-      name: "design-challenge-tracker",
-      version: 2,
-      storage: createJSONStorage(() =>
-        typeof window !== "undefined"
-          ? window.localStorage
-          : {
-              getItem: () => null,
-              setItem: () => {},
-              removeItem: () => {},
-            },
-      ),
-      partialize: (s) => ({ candidates: s.candidates, challenges: s.challenges }),
-      // v2: refresh the real portfolio/resume hyperlink targets from the sheet
-      // for seeded candidates, without touching status / timers / feedback.
-      migrate: (persisted, version) => {
-        const state = persisted as { candidates?: CandidateDTO[]; challenges?: ChallengeDTO[] };
-        if (version < 2 && state?.candidates) {
-          const seedById = new Map(initialCandidates().map((c) => [c.id, c]));
-          state.candidates = state.candidates.map((c) => {
-            const seed = seedById.get(c.id);
-            return seed
-              ? { ...c, portfolioUrl: seed.portfolioUrl, resumeUrl: seed.resumeUrl }
-              : c;
-          });
-        }
-        return state;
-      },
-    },
-  ),
-);
+        candidates.push(candidate);
+        fresh.push(candidate);
+        created++;
+      }
+      return { candidates, challenges };
+    });
+    if (fresh.length) void apiUpsert(fresh);
+    return { created, skipped };
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // Dashboard UI state (search / filter / sort) — ephemeral, not persisted.

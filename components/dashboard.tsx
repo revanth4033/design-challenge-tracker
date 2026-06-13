@@ -53,6 +53,9 @@ export function Dashboard() {
   const mounted = useMounted();
   const candidates = useTracker((s) => s.candidates);
   const challenges = useTracker((s) => s.challenges);
+  const loaded = useTracker((s) => s.loaded);
+  const error = useTracker((s) => s.error);
+  const ready = mounted && loaded;
 
   const { search, statusFilter, sortBy, setSearch, setStatusFilter, setSortBy } =
     useDashboardUi();
@@ -114,7 +117,7 @@ export function Dashboard() {
         </Button>
       </header>
 
-      <StatCards stats={mounted ? stats : null} />
+      <StatCards stats={ready ? stats : null} />
 
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -169,10 +172,14 @@ export function Dashboard() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!mounted ? (
+            {!ready ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  Loading…
+                  {mounted && error ? (
+                    <span className="text-red-600">{error}</span>
+                  ) : (
+                    "Loading…"
+                  )}
                 </TableCell>
               </TableRow>
             ) : visible.length === 0 ? (
@@ -249,7 +256,7 @@ export function Dashboard() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {mounted ? `Showing ${visible.length} of ${candidates.length} candidates · ` : ""}
+        {ready ? `Showing ${visible.length} of ${candidates.length} candidates · ` : ""}
         Timers update every second and are calculated from stored start times. All data is saved in
         this browser.
       </p>

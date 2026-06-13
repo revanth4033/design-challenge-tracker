@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClockProvider } from "@/components/clock-provider";
+import { SyncProvider } from "@/components/sync-provider";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body className="min-h-full">
         <ClockProvider>
-          <AppShell>{children}</AppShell>
+          <SyncProvider>
+            <AppShell>{children}</AppShell>
+          </SyncProvider>
         </ClockProvider>
         <Toaster richColors position="top-right" />
       </body>
