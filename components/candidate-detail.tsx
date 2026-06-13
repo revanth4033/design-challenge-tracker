@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   FileCheck2,
+  ClipboardCheck,
   CheckCircle2,
   XCircle,
   UserX,
@@ -38,6 +39,12 @@ const STATUS_ACTIONS: {
   variant?: "default" | "outline" | "destructive";
 }[] = [
   { status: "SUBMITTED", label: "Mark Submitted", icon: FileCheck2, variant: "default" },
+  {
+    status: "INTERVIEW_COMPLETED",
+    label: "Mark Interview Completed",
+    icon: ClipboardCheck,
+    variant: "outline",
+  },
   { status: "ON_HOLD", label: "Mark On Hold", icon: PauseCircle, variant: "outline" },
   { status: "SELECTED", label: "Mark Selected", icon: CheckCircle2, variant: "outline" },
   { status: "REJECTED", label: "Mark Rejected", icon: XCircle, variant: "outline" },
@@ -236,9 +243,14 @@ export function CandidateDetail({ id }: { id: string }) {
             variant="ghost"
             className="text-muted-foreground"
             disabled={
-              !["SUBMITTED", "ON_HOLD", "SELECTED", "REJECTED", "ABSENT"].includes(
-                candidate.status,
-              )
+              ![
+                "SUBMITTED",
+                "INTERVIEW_COMPLETED",
+                "ON_HOLD",
+                "SELECTED",
+                "REJECTED",
+                "ABSENT",
+              ].includes(candidate.status)
             }
             onClick={clearStatus}
           >

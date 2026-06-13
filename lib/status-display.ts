@@ -42,6 +42,11 @@ export function statusDisplay(
         label: "Submitted",
         className: "bg-blue-100 text-blue-700 border-blue-200",
       };
+    case "INTERVIEW_COMPLETED":
+      return {
+        label: "Interview Done",
+        className: "bg-cyan-100 text-cyan-700 border-cyan-200",
+      };
     case "ON_HOLD":
       return {
         label: "On Hold",
@@ -76,6 +81,7 @@ export const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "RUNNING", label: "Running" },
   { value: "COMPLETED", label: "Time Up" },
   { value: "SUBMITTED", label: "Submitted" },
+  { value: "INTERVIEW_COMPLETED", label: "Interview Done" },
   { value: "ON_HOLD", label: "On Hold" },
   { value: "SELECTED", label: "Selected" },
   { value: "REJECTED", label: "Rejected" },
