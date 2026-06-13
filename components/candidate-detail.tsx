@@ -84,7 +84,7 @@ export function CandidateDetail({ id }: { id: string }) {
 
   const eff = effectiveStatus(candidate.status, candidate.endsAt, reference);
   const alert = alertLevel(candidate.status, candidate.endsAt, reference);
-  const notStarted = candidate.status === "NOT_STARTED" || candidate.status === "ABSENT";
+  const notStarted = candidate.status === "NOT_STARTED";
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">

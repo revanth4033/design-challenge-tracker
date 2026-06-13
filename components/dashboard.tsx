@@ -227,7 +227,7 @@ export function Dashboard() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {(c.status === "NOT_STARTED" || c.status === "ABSENT") && (
+                        {c.status === "NOT_STARTED" && (
                           <StartButton candidate={c} challenges={challenges} />
                         )}
                         <Button
