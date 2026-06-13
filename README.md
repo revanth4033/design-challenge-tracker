@@ -83,7 +83,7 @@ cp .env.example .env
 
 # 3. create the database, generate the client, and load sample data
 npm run db:migrate      # applies migrations and creates dev.db
-npm run db:seed         # loads 12 sample candidates + 2 challenge types
+npm run db:seed         # loads the real 40 candidates from the sheet + 2 challenge types
 
 # 4. start the app
 npm run dev
@@ -103,11 +103,11 @@ Open **http://localhost:3000**.
 | `npm run dev` | Start the dev server (Turbopack) |
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run db:migrate` | Apply Prisma migrations (creates `dev.db`) |
-| `npm run db:seed` | Reset to the demo dataset (12 candidates) |
+| `npm run db:seed` | Load the real dataset from the sheet (40 candidates) |
 | `npm run db:reset` | Drop, re-migrate, and re-seed |
 | `npm run db:studio` | Open Prisma Studio to inspect data |
 
-The seed sets up candidates across **every visual state** — running (green / orange / expired), submitted, selected, rejected, absent, and not-started — so the dashboard tells a complete story immediately.
+The seed loads the **actual 40 candidates** from `Final Selected Candidates.xlsx` (data in `prisma/seed-data.json`). The 16 marked **Present** with a challenge and a start time are seeded as **Running**, anchored to today at their recorded start time (e.g. `14:00 → 19:00`); the other 24 are **Not Started**. No statuses are fabricated — the sheet records no Select/Reject decisions, so none are shown.
 
 ---
 
