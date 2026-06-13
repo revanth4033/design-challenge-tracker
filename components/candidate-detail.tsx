@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   UserX,
+  RotateCcw,
   Trash2,
   AlertTriangle,
   AlarmClockOff,
@@ -43,6 +44,7 @@ export function CandidateDetail({ id }: { id: string }) {
   const candidate = useTracker((s) => s.candidates.find((c) => c.id === id));
   const challenges = useTracker((s) => s.challenges);
   const setStatusAction = useTracker((s) => s.setStatus);
+  const clearStatusAction = useTracker((s) => s.clearStatus);
   const deleteCandidate = useTracker((s) => s.deleteCandidate);
   const now = useClock((s) => s.now);
   const reference = now || Date.now();
@@ -50,6 +52,11 @@ export function CandidateDetail({ id }: { id: string }) {
   function setStatus(status: StoredStatus) {
     setStatusAction(id, status);
     toast.success(`Marked ${status.toLowerCase().replace("_", " ")}`);
+  }
+
+  function clearStatus() {
+    clearStatusAction(id);
+    toast.success("Status cleared");
   }
 
   function remove() {
@@ -181,7 +188,7 @@ export function CandidateDetail({ id }: { id: string }) {
         <CardHeader>
           <CardTitle className="text-base">Status controls</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="flex flex-wrap items-center gap-2">
           {STATUS_ACTIONS.map((a) => {
             const Icon = a.icon;
             const active = candidate.status === a.status;
@@ -197,6 +204,16 @@ export function CandidateDetail({ id }: { id: string }) {
               </Button>
             );
           })}
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button
+            variant="ghost"
+            className="text-muted-foreground"
+            disabled={!["SUBMITTED", "SELECTED", "REJECTED", "ABSENT"].includes(candidate.status)}
+            onClick={clearStatus}
+          >
+            <RotateCcw className="size-3.5" />
+            Clear
+          </Button>
         </CardContent>
       </Card>
     </div>

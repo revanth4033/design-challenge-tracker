@@ -63,6 +63,7 @@ interface TrackerState {
   challenges: ChallengeDTO[];
   startChallenge: (id: string, challengeId?: string) => void;
   setStatus: (id: string, status: StoredStatus) => void;
+  clearStatus: (id: string) => void;
   addCandidate: (input: NewCandidateInput) => CandidateDTO;
   deleteCandidate: (id: string) => void;
   importCandidates: (rows: ImportedCandidate[]) => { created: number; skipped: number };
@@ -107,6 +108,21 @@ export const useTracker = create<TrackerState>()(
         set((s) => ({
           candidates: s.candidates.map((c) =>
             c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c,
+          ),
+        })),
+
+      // Clear a manual status, reverting to the timer-derived state:
+      // Running if a timer exists, otherwise Not Started.
+      clearStatus: (id) =>
+        set((s) => ({
+          candidates: s.candidates.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  status: c.startedAt && c.endsAt ? "RUNNING" : "NOT_STARTED",
+                  updatedAt: new Date().toISOString(),
+                }
+              : c,
           ),
         })),
 
