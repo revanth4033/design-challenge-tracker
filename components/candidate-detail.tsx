@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   UserX,
+  PauseCircle,
   RotateCcw,
   Trash2,
   AlertTriangle,
@@ -37,6 +38,7 @@ const STATUS_ACTIONS: {
   variant?: "default" | "outline" | "destructive";
 }[] = [
   { status: "SUBMITTED", label: "Mark Submitted", icon: FileCheck2, variant: "default" },
+  { status: "ON_HOLD", label: "Mark On Hold", icon: PauseCircle, variant: "outline" },
   { status: "SELECTED", label: "Mark Selected", icon: CheckCircle2, variant: "outline" },
   { status: "REJECTED", label: "Mark Rejected", icon: XCircle, variant: "outline" },
   { status: "ABSENT", label: "Mark Absent", icon: UserX, variant: "outline" },
@@ -233,7 +235,11 @@ export function CandidateDetail({ id }: { id: string }) {
           <Button
             variant="ghost"
             className="text-muted-foreground"
-            disabled={!["SUBMITTED", "SELECTED", "REJECTED", "ABSENT"].includes(candidate.status)}
+            disabled={
+              !["SUBMITTED", "ON_HOLD", "SELECTED", "REJECTED", "ABSENT"].includes(
+                candidate.status,
+              )
+            }
             onClick={clearStatus}
           >
             <RotateCcw className="size-3.5" />

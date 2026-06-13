@@ -5,6 +5,7 @@ export const STORED_STATUSES = [
   "NOT_STARTED",
   "RUNNING",
   "SUBMITTED",
+  "ON_HOLD",
   "SELECTED",
   "REJECTED",
   "ABSENT",

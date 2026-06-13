@@ -42,6 +42,11 @@ export function statusDisplay(
         label: "Submitted",
         className: "bg-blue-100 text-blue-700 border-blue-200",
       };
+    case "ON_HOLD":
+      return {
+        label: "On Hold",
+        className: "bg-violet-100 text-violet-700 border-violet-200",
+      };
     case "SELECTED":
       return {
         label: "Selected",
@@ -71,6 +76,7 @@ export const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "RUNNING", label: "Running" },
   { value: "COMPLETED", label: "Time Up" },
   { value: "SUBMITTED", label: "Submitted" },
+  { value: "ON_HOLD", label: "On Hold" },
   { value: "SELECTED", label: "Selected" },
   { value: "REJECTED", label: "Rejected" },
   { value: "ABSENT", label: "Absent" },
