@@ -65,12 +65,14 @@ interface TrackerState {
   error: string | null;
   syncFromServer: () => Promise<void>;
   startChallenge: (id: string, challengeId?: string) => void;
+  setTiming: (id: string, startedAtIso: string) => void;
   setStatus: (id: string, status: StoredStatus) => void;
   clearStatus: (id: string) => void;
   setFeedback: (id: string, feedback: string) => void;
   addCandidate: (input: NewCandidateInput) => CandidateDTO;
   deleteCandidate: (id: string) => void;
   importCandidates: (rows: ImportedCandidate[]) => { created: number; skipped: number };
+  resetToSheet: () => Promise<void>;
 }
 
 function newId(): string {
@@ -134,6 +136,31 @@ export const useTracker = create<TrackerState>((set, get) => ({
           startedAt: start.toISOString(),
           endsAt: end.toISOString(),
           updatedAt: start.toISOString(),
+        };
+        return updated;
+      }),
+    }));
+    if (updated) void apiUpsert([updated]);
+  },
+
+  // Manually set/correct a candidate's start time; recomputes end = start + 5h
+  // and marks them Running. startedAtIso is a full ISO timestamp.
+  setTiming: (id, startedAtIso) => {
+    const challenges = get().challenges;
+    let updated: CandidateDTO | undefined;
+    set((s) => ({
+      candidates: s.candidates.map((c) => {
+        if (c.id !== id) return c;
+        const challenge = challenges.find((x) => x.id === c.challengeId) ?? c.challenge ?? null;
+        const duration = challenge?.durationMinutes ?? CHALLENGE_DURATION_MINUTES;
+        const start = new Date(startedAtIso);
+        const end = new Date(start.getTime() + duration * 60_000);
+        updated = {
+          ...c,
+          status: "RUNNING",
+          startedAt: start.toISOString(),
+          endsAt: end.toISOString(),
+          updatedAt: new Date().toISOString(),
         };
         return updated;
       }),
@@ -283,6 +310,11 @@ export const useTracker = create<TrackerState>((set, get) => ({
     });
     if (fresh.length) void apiUpsert(fresh);
     return { created, skipped };
+  },
+
+  resetToSheet: async () => {
+    await fetch("/api/reset", { method: "POST" });
+    await get().syncFromServer();
   },
 }));
 

@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Save,
   Pencil,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClock, useTracker } from "@/lib/store";
@@ -31,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 const STATUS_ACTIONS: {
   status: StoredStatus;
@@ -60,7 +62,10 @@ export function CandidateDetail({ id }: { id: string }) {
   const setStatusAction = useTracker((s) => s.setStatus);
   const clearStatusAction = useTracker((s) => s.clearStatus);
   const setFeedbackAction = useTracker((s) => s.setFeedback);
+  const setTimingAction = useTracker((s) => s.setTiming);
   const deleteCandidate = useTracker((s) => s.deleteCandidate);
+  const [editingTiming, setEditingTiming] = useState(false);
+  const [startInput, setStartInput] = useState("");
   const now = useClock((s) => s.now);
   const reference = now || Date.now();
 
@@ -87,6 +92,19 @@ export function CandidateDetail({ id }: { id: string }) {
     setFeedbackText("");
     setEditingFeedback(false);
     toast.success("Feedback deleted");
+  }
+
+  function openTimingEditor() {
+    setStartInput(toLocalInput(candidate?.startedAt ?? null));
+    setEditingTiming(true);
+  }
+
+  function saveTiming() {
+    if (!startInput) return;
+    // datetime-local is in the browser's local timezone → ISO (UTC) for storage.
+    setTimingAction(id, new Date(startInput).toISOString());
+    setEditingTiming(false);
+    toast.success("Timing updated");
   }
 
   function clearStatus() {
@@ -187,13 +205,41 @@ export function CandidateDetail({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            <Info label="Started At" value={formatDateTime(candidate.startedAt)} />
-            <Info label="Ends At" value={formatDateTime(candidate.endsAt)} />
-
-            {notStarted && (
-              <div className="pt-1">
-                <StartButton candidate={candidate} challenges={challenges} size="default" />
+            {editingTiming ? (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">Start time</div>
+                <Input
+                  type="datetime-local"
+                  value={startInput}
+                  onChange={(e) => setStartInput(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  End is set automatically to 5 hours after the start.
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setEditingTiming(false)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" disabled={!startInput} onClick={saveTiming}>
+                    <Save className="size-3.5" />
+                    Save timing
+                  </Button>
+                </div>
               </div>
+            ) : (
+              <>
+                <Info label="Started At" value={formatDateTime(candidate.startedAt)} />
+                <Info label="Ends At" value={formatDateTime(candidate.endsAt)} />
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {notStarted && (
+                    <StartButton candidate={candidate} challenges={challenges} size="default" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={openTimingEditor}>
+                    <Clock className="size-3.5" />
+                    Edit timing
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -318,6 +364,13 @@ export function CandidateDetail({ id }: { id: string }) {
       </Card>
     </div>
   );
+}
+
+/** ISO timestamp → "YYYY-MM-DDTHH:mm" in the browser's local timezone for datetime-local. */
+function toLocalInput(iso: string | null): string {
+  const d = iso ? new Date(iso) : new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function Info({ label, value }: { label: string; value: string }) {

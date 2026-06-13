@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { Search, ArrowUpDown, ChevronRight, AlertTriangle, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import {
   useClock,
   useTracker,
@@ -55,7 +56,23 @@ export function Dashboard() {
   const challenges = useTracker((s) => s.challenges);
   const loaded = useTracker((s) => s.loaded);
   const error = useTracker((s) => s.error);
+  const resetToSheet = useTracker((s) => s.resetToSheet);
   const ready = mounted && loaded;
+
+  async function handleReset() {
+    if (
+      !confirm(
+        "Reset all candidates back to the sheet data?\nThis wipes current statuses, timers, and feedback for everyone.",
+      )
+    )
+      return;
+    try {
+      await resetToSheet();
+      toast.success("Reset to sheet data");
+    } catch {
+      toast.error("Could not reset");
+    }
+  }
 
   const { search, statusFilter, sortBy, setSearch, setStatusFilter, setSortBy } =
     useDashboardUi();
@@ -112,9 +129,20 @@ export function Dashboard() {
             Live tracking for all design challenges.
           </p>
         </div>
-        <Button render={<Link href="/candidates/new" />} size="sm">
-          Add candidate
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={handleReset}
+          >
+            <RotateCcw className="size-3.5" />
+            Reset to sheet
+          </Button>
+          <Button render={<Link href="/candidates/new" />} size="sm">
+            Add candidate
+          </Button>
+        </div>
       </header>
 
       <StatCards stats={ready ? stats : null} />

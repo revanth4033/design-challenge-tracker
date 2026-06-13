@@ -33,12 +33,20 @@ export function initialChallenges(): ChallengeDTO[] {
   }));
 }
 
-/** Build a Date for today at the given "HH:MM" local time. */
+// The sheet's challenge times are Indian local times (the challenges run in
+// Hyderabad). Seeding happens server-side on Vercel (UTC), so we anchor the
+// "HH:MM" to today's date in IST (UTC+5:30) to get the correct absolute instant.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/** Build a Date for today at the given "HH:MM" Indian Standard Time. */
 function todayAt(hhmm: string): Date {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m ?? 0, 0, 0);
-  return d;
+  const istNow = new Date(Date.now() + IST_OFFSET_MS);
+  const year = istNow.getUTCFullYear();
+  const month = istNow.getUTCMonth();
+  const day = istNow.getUTCDate();
+  // Desired IST wall-clock time converted back to a UTC instant.
+  return new Date(Date.UTC(year, month, day, h, m ?? 0, 0, 0) - IST_OFFSET_MS);
 }
 
 /**

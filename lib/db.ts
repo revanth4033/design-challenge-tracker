@@ -72,3 +72,17 @@ export async function deleteCandidateRow(id: string): Promise<void> {
   await ensureSchema(sql);
   await sql`DELETE FROM candidates WHERE id = ${id}`;
 }
+
+/** Wipe all candidates and re-seed from the sheet (with corrected timings). */
+export async function resetToSheet(): Promise<void> {
+  const sql = getSql();
+  await ensureSchema(sql);
+  await sql`DELETE FROM candidates`;
+  const seed = initialCandidates();
+  await sql.transaction(
+    seed.map(
+      (c) =>
+        sql`INSERT INTO candidates (id, data) VALUES (${c.id}, ${JSON.stringify(c)}::jsonb)`,
+    ),
+  );
+}
