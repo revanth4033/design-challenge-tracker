@@ -72,6 +72,13 @@ export function CandidateDetail({ id }: { id: string }) {
     toast.success("Feedback saved");
   }
 
+  function deleteFeedback() {
+    setFeedbackAction(id, "");
+    setFeedbackText("");
+    setEditingFeedback(false);
+    toast.success("Feedback deleted");
+  }
+
   function clearStatus() {
     clearStatusAction(id);
     toast.success("Status cleared");
@@ -246,7 +253,15 @@ export function CandidateDetail({ id }: { id: string }) {
               <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
                 {candidate.feedback}
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={deleteFeedback}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </Button>
                 <Button variant="outline" onClick={() => setEditingFeedback(true)}>
                   <Pencil className="size-3.5" />
                   Edit feedback
