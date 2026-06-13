@@ -84,6 +84,7 @@ export function initialCandidates(): CandidateDTO[] {
       status,
       startedAt,
       endsAt,
+      feedback: null,
       createdAt: nowIso,
       updatedAt: nowIso,
     } satisfies CandidateDTO;

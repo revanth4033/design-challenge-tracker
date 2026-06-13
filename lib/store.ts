@@ -64,6 +64,7 @@ interface TrackerState {
   startChallenge: (id: string, challengeId?: string) => void;
   setStatus: (id: string, status: StoredStatus) => void;
   clearStatus: (id: string) => void;
+  setFeedback: (id: string, feedback: string) => void;
   addCandidate: (input: NewCandidateInput) => CandidateDTO;
   deleteCandidate: (id: string) => void;
   importCandidates: (rows: ImportedCandidate[]) => { created: number; skipped: number };
@@ -111,6 +112,15 @@ export const useTracker = create<TrackerState>()(
           ),
         })),
 
+      setFeedback: (id, feedback) =>
+        set((s) => ({
+          candidates: s.candidates.map((c) =>
+            c.id === id
+              ? { ...c, feedback: feedback.trim() || null, updatedAt: new Date().toISOString() }
+              : c,
+          ),
+        })),
+
       // Clear a manual status, reverting to the timer-derived state:
       // Running if a timer exists, otherwise Not Started.
       clearStatus: (id) =>
@@ -148,6 +158,7 @@ export const useTracker = create<TrackerState>()(
           status: "NOT_STARTED",
           startedAt: null,
           endsAt: null,
+          feedback: null,
           createdAt: now,
           updatedAt: now,
         };
@@ -212,6 +223,7 @@ export const useTracker = create<TrackerState>()(
               status: r.status,
               startedAt: null,
               endsAt: null,
+              feedback: null,
               createdAt: now,
               updatedAt: now,
             });

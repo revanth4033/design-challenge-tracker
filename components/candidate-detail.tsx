@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   AlarmClockOff,
   ExternalLink,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClock, useTracker } from "@/lib/store";
@@ -25,6 +27,7 @@ import { StartButton } from "@/components/start-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 const STATUS_ACTIONS: {
   status: StoredStatus;
@@ -45,13 +48,30 @@ export function CandidateDetail({ id }: { id: string }) {
   const challenges = useTracker((s) => s.challenges);
   const setStatusAction = useTracker((s) => s.setStatus);
   const clearStatusAction = useTracker((s) => s.clearStatus);
+  const setFeedbackAction = useTracker((s) => s.setFeedback);
   const deleteCandidate = useTracker((s) => s.deleteCandidate);
   const now = useClock((s) => s.now);
   const reference = now || Date.now();
 
+  const [feedbackText, setFeedbackText] = useState("");
+  useEffect(() => {
+    setFeedbackText(candidate?.feedback ?? "");
+  }, [candidate?.id, candidate?.feedback]);
+
   function setStatus(status: StoredStatus) {
     setStatusAction(id, status);
     toast.success(`Marked ${status.toLowerCase().replace("_", " ")}`);
+  }
+
+  function saveFeedback() {
+    setFeedbackAction(id, feedbackText);
+    toast.success("Feedback saved");
+  }
+
+  function decide(status: StoredStatus) {
+    setFeedbackAction(id, feedbackText);
+    setStatusAction(id, status);
+    toast.success(status === "SELECTED" ? "Candidate selected" : "Candidate rejected");
   }
 
   function clearStatus() {
@@ -214,6 +234,45 @@ export function CandidateDetail({ id }: { id: string }) {
             <RotateCcw className="size-3.5" />
             Clear
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Interviewer feedback & decision */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Interviewer feedback &amp; decision</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            placeholder="Write your feedback on the candidate's submission — interview notes, strengths, concerns…"
+            className="min-h-32"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={saveFeedback}>
+              <Save className="size-3.5" />
+              Save feedback
+            </Button>
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            <Button
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => decide("SELECTED")}
+            >
+              <CheckCircle2 className="size-3.5" />
+              Select
+            </Button>
+            <Button
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => decide("REJECTED")}
+            >
+              <XCircle className="size-3.5" />
+              Reject
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            “Select” or “Reject” saves your feedback and records the decision.
+          </p>
         </CardContent>
       </Card>
     </div>

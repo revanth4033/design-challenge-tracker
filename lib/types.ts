@@ -38,6 +38,8 @@ export interface CandidateDTO {
   status: StoredStatus;
   startedAt: string | null;
   endsAt: string | null;
+  /** Interviewer's free-text feedback on the candidate's submission. */
+  feedback: string | null;
   createdAt: string;
   updatedAt: string;
 }
