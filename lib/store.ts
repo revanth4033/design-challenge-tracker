@@ -239,7 +239,7 @@ export const useTracker = create<TrackerState>()(
     }),
     {
       name: "design-challenge-tracker",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() =>
         typeof window !== "undefined"
           ? window.localStorage
@@ -250,6 +250,21 @@ export const useTracker = create<TrackerState>()(
             },
       ),
       partialize: (s) => ({ candidates: s.candidates, challenges: s.challenges }),
+      // v2: refresh the real portfolio/resume hyperlink targets from the sheet
+      // for seeded candidates, without touching status / timers / feedback.
+      migrate: (persisted, version) => {
+        const state = persisted as { candidates?: CandidateDTO[]; challenges?: ChallengeDTO[] };
+        if (version < 2 && state?.candidates) {
+          const seedById = new Map(initialCandidates().map((c) => [c.id, c]));
+          state.candidates = state.candidates.map((c) => {
+            const seed = seedById.get(c.id);
+            return seed
+              ? { ...c, portfolioUrl: seed.portfolioUrl, resumeUrl: seed.resumeUrl }
+              : c;
+          });
+        }
+        return state;
+      },
     },
   ),
 );

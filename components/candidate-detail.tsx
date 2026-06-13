@@ -311,12 +311,13 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function LinkInfo({ label, value }: { label: string; value: string | null }) {
+  const isUrl = !!value && /^https?:\/\//i.test(value);
   return (
     <div>
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      {value ? (
+      {isUrl ? (
         <a
-          href={/^https?:\/\//.test(value) ? value : `https://${value}`}
+          href={value!}
           target="_blank"
           rel="noreferrer"
           className="mt-0.5 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline break-all"
@@ -325,7 +326,9 @@ function LinkInfo({ label, value }: { label: string; value: string | null }) {
           <ExternalLink className="size-3 shrink-0" />
         </a>
       ) : (
-        <div className="mt-0.5 text-sm text-muted-foreground">—</div>
+        // Not a real link (e.g. just a filename that didn't open in the sheet) —
+        // show it as plain text instead of a broken link.
+        <div className="mt-0.5 text-sm text-muted-foreground break-all">{value || "—"}</div>
       )}
     </div>
   );
