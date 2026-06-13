@@ -68,12 +68,6 @@ export function CandidateDetail({ id }: { id: string }) {
     toast.success("Feedback saved");
   }
 
-  function decide(status: StoredStatus) {
-    setFeedbackAction(id, feedbackText);
-    setStatusAction(id, status);
-    toast.success(status === "SELECTED" ? "Candidate selected" : "Candidate rejected");
-  }
-
   function clearStatus() {
     clearStatusAction(id);
     toast.success("Status cleared");
@@ -237,10 +231,10 @@ export function CandidateDetail({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {/* Interviewer feedback & decision */}
+      {/* Interviewer feedback */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Interviewer feedback &amp; decision</CardTitle>
+          <CardTitle className="text-base">Interviewer feedback</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
@@ -249,30 +243,12 @@ export function CandidateDetail({ id }: { id: string }) {
             placeholder="Write your feedback on the candidate's submission — interview notes, strengths, concerns…"
             className="min-h-32"
           />
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex justify-end">
             <Button variant="outline" onClick={saveFeedback}>
               <Save className="size-3.5" />
               Save feedback
             </Button>
-            <Separator orientation="vertical" className="mx-1 h-6" />
-            <Button
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={() => decide("SELECTED")}
-            >
-              <CheckCircle2 className="size-3.5" />
-              Select
-            </Button>
-            <Button
-              className="bg-red-600 text-white hover:bg-red-700"
-              onClick={() => decide("REJECTED")}
-            >
-              <XCircle className="size-3.5" />
-              Reject
-            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            “Select” or “Reject” saves your feedback and records the decision.
-          </p>
         </CardContent>
       </Card>
     </div>
