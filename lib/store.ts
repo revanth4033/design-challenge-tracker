@@ -327,16 +327,20 @@ export type SortKey = "remaining" | "startTime" | "endTime" | "name";
 interface DashboardUiState {
   search: string;
   statusFilter: StatusFilter;
+  batchFilter: string;
   sortBy: SortKey;
   setSearch: (v: string) => void;
   setStatusFilter: (v: StatusFilter) => void;
+  setBatchFilter: (v: string) => void;
   setSortBy: (v: SortKey) => void;
 }
 export const useDashboardUi = create<DashboardUiState>((set) => ({
   search: "",
   statusFilter: "ALL",
+  batchFilter: "ALL",
   sortBy: "remaining",
   setSearch: (search) => set({ search }),
   setStatusFilter: (statusFilter) => set({ statusFilter }),
+  setBatchFilter: (batchFilter) => set({ batchFilter }),
   setSortBy: (sortBy) => set({ sortBy }),
 }));

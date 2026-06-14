@@ -3,14 +3,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, ArrowUpDown, ChevronRight, AlertTriangle } from "lucide-react";
-import {
-  useClock,
-  useTracker,
-  useDashboardUi,
-  type SortKey,
-  type StatusFilter,
-} from "@/lib/store";
+import { Search, ChevronRight, AlertTriangle, Download } from "lucide-react";
+import { toast } from "sonner";
+import { useClock, useTracker, useDashboardUi, type StatusFilter } from "@/lib/store";
+import { exportCandidatesToExcel } from "@/lib/export-excel";
 import { useMounted } from "@/lib/use-mounted";
 import {
   alertLevel,
@@ -43,13 +39,6 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "remaining", label: "Remaining time" },
-  { value: "startTime", label: "Start time" },
-  { value: "endTime", label: "End time" },
-  { value: "name", label: "Name" },
-];
-
 export function Dashboard() {
   const router = useRouter();
   const mounted = useMounted();
@@ -59,10 +48,16 @@ export function Dashboard() {
   const error = useTracker((s) => s.error);
   const ready = mounted && loaded;
 
-  const { search, statusFilter, sortBy, setSearch, setStatusFilter, setSortBy } =
+  const { search, statusFilter, batchFilter, sortBy, setSearch, setStatusFilter, setBatchFilter } =
     useDashboardUi();
   const now = useClock((s) => s.now);
   const reference = now || Date.now();
+
+  const batches = useMemo(
+    () =>
+      Array.from(new Set(candidates.map((c) => c.batch).filter(Boolean) as string[])).sort(),
+    [candidates],
+  );
 
   const stats = useMemo<StatsDTO>(() => {
     const s: StatsDTO = {
@@ -100,10 +95,11 @@ export function Dashboard() {
           const eff = effectiveStatus(c.status, c.endsAt, reference);
           if (eff !== statusFilter) return false;
         }
+        if (batchFilter !== "ALL" && c.batch !== batchFilter) return false;
         return true;
       })
       .sort((a, b) => compareCandidates(a, b, sortBy));
-  }, [candidates, search, statusFilter, sortBy, reference]);
+  }, [candidates, search, statusFilter, batchFilter, sortBy, reference]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
@@ -114,9 +110,25 @@ export function Dashboard() {
             Live tracking for all design challenges.
           </p>
         </div>
-        <Button render={<Link href="/candidates/new" />} size="sm">
-          Add candidate
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!ready || visible.length === 0}
+            onClick={() => {
+              exportCandidatesToExcel(visible, reference);
+              toast.success(
+                `Exported ${visible.length} candidate${visible.length === 1 ? "" : "s"}`,
+              );
+            }}
+          >
+            <Download className="size-3.5" />
+            Export
+          </Button>
+          <Button render={<Link href="/candidates/new" />} size="sm">
+            Add candidate
+          </Button>
+        </div>
       </header>
 
       <StatCards stats={ready ? stats : null} />
@@ -134,7 +146,11 @@ export function Dashboard() {
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter((v as StatusFilter) ?? "ALL")}>
           <SelectTrigger className="sm:w-44">
-            <SelectValue />
+            <SelectValue>
+              {(v: string | null) =>
+                STATUS_FILTER_OPTIONS.find((o) => o.value === v)?.label ?? "All statuses"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {STATUS_FILTER_OPTIONS.map((o) => (
@@ -144,15 +160,17 @@ export function Dashboard() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sortBy} onValueChange={(v) => setSortBy((v as SortKey) ?? "remaining")}>
-          <SelectTrigger className="sm:w-44">
-            <ArrowUpDown className="size-3.5 text-muted-foreground" />
-            <SelectValue />
+        <Select value={batchFilter} onValueChange={(v) => setBatchFilter(v ?? "ALL")}>
+          <SelectTrigger className="sm:w-40">
+            <SelectValue>
+              {(v: string | null) => (v && v !== "ALL" ? v : "All batches")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {SORT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
+            <SelectItem value="ALL">All batches</SelectItem>
+            {batches.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b}
               </SelectItem>
             ))}
           </SelectContent>
@@ -166,6 +184,7 @@ export function Dashboard() {
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead>Candidate</TableHead>
               <TableHead>Challenge</TableHead>
+              <TableHead>Batch</TableHead>
               <TableHead>Start</TableHead>
               <TableHead>End</TableHead>
               <TableHead>Remaining</TableHead>
@@ -176,7 +195,7 @@ export function Dashboard() {
           <TableBody>
             {!ready ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   {mounted && error ? (
                     <span className="text-red-600">{error}</span>
                   ) : (
@@ -186,7 +205,7 @@ export function Dashboard() {
               </TableRow>
             ) : visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   No candidates match your filters.
                 </TableCell>
               </TableRow>
@@ -220,6 +239,9 @@ export function Dashboard() {
                       {c.challenge?.name ?? (
                         <span className="text-muted-foreground">Unassigned</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {c.batch ?? "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatTime(c.startedAt)}
