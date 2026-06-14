@@ -25,53 +25,61 @@ export function statusDisplay(
       if (alert === "critical" || alert === "warning") {
         return {
           label: "Running",
-          className: "bg-amber-100 text-amber-700 border-amber-200",
+          className:
+            "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/25",
         };
       }
       return {
         label: "Running",
-        className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        className:
+          "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25",
       };
     case "COMPLETED":
       return {
         label: "Time Up",
-        className: "bg-red-100 text-red-700 border-red-200",
+        className:
+          "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25",
       };
     case "SUBMITTED":
       return {
         label: "Submitted",
-        className: "bg-blue-100 text-blue-700 border-blue-200",
+        className:
+          "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/25",
       };
     case "INTERVIEW_COMPLETED":
       return {
         label: "Interview Done",
-        className: "bg-cyan-100 text-cyan-700 border-cyan-200",
+        className:
+          "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-400 dark:border-cyan-500/25",
       };
     case "ON_HOLD":
       return {
         label: "On Hold",
-        className: "bg-violet-100 text-violet-700 border-violet-200",
+        className:
+          "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/30 dark:text-violet-200 dark:border-violet-500/50",
       };
     case "SELECTED":
       return {
         label: "Selected",
-        className: "bg-emerald-600 text-white border-emerald-600",
+        className: "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-500 dark:border-emerald-500",
       };
     case "REJECTED":
       return {
         label: "Rejected",
-        className: "bg-red-600 text-white border-red-600",
+        className: "bg-red-600 text-white border-red-600 dark:bg-red-500 dark:border-red-500",
       };
     case "ABSENT":
       return {
         label: "Absent",
-        className: "bg-zinc-200 text-zinc-600 border-zinc-300",
+        className:
+          "bg-zinc-200 text-zinc-600 border-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:border-zinc-600",
       };
     case "NOT_STARTED":
     default:
       return {
         label: "Not Started",
-        className: "bg-zinc-100 text-zinc-500 border-zinc-200",
+        className:
+          "bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
       };
   }
 }

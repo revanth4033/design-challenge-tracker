@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, UserPlus, Upload, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -47,8 +48,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="border-t p-4 text-[11px] text-muted-foreground">
-          5-hour design challenges
+        <div className="space-y-1 border-t p-2">
+          <ThemeToggle />
+          <div className="px-3 pb-1 text-[11px] text-muted-foreground">
+            5-hour design challenges
+          </div>
         </div>
       </aside>
 
@@ -59,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Timer className="size-4" />
           </div>
           <span className="text-sm font-semibold">Challenge Tracker</span>
-          <nav className="ml-auto flex gap-1">
+          <nav className="ml-auto flex items-center gap-1">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -77,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            <ThemeToggle variant="icon" />
           </nav>
         </header>
         <main className="flex-1">{children}</main>

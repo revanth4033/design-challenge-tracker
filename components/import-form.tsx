@@ -149,12 +149,14 @@ export function ImportForm() {
       </Card>
 
       {result && (
-        <Card className="border-emerald-200 bg-emerald-50/50">
+        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30">
           <CardContent className="flex items-start gap-3 pt-6">
-            <CheckCircle2 className="mt-0.5 size-5 text-emerald-600" />
+            <CheckCircle2 className="mt-0.5 size-5 text-emerald-600 dark:text-emerald-400" />
             <div className="space-y-1 text-sm">
-              <div className="font-medium text-emerald-900">Import complete</div>
-              <ul className="text-emerald-800">
+              <div className="font-medium text-emerald-900 dark:text-emerald-300">
+                Import complete
+              </div>
+              <ul className="text-emerald-800 dark:text-emerald-400/90">
                 <li>{result.created} candidates imported</li>
                 {result.skipped > 0 && <li>{result.skipped} skipped (already existed)</li>}
                 {result.batches.length > 0 && <li>Batches: {result.batches.join(", ")}</li>}

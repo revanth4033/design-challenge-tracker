@@ -392,7 +392,7 @@ function LinkInfo({ label, value }: { label: string; value: string | null }) {
           href={value!}
           target="_blank"
           rel="noreferrer"
-          className="mt-0.5 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline break-all"
+          className="mt-0.5 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline break-all dark:text-blue-400"
         >
           {value}
           <ExternalLink className="size-3 shrink-0" />
@@ -419,8 +419,8 @@ function AlertBanner({
 }) {
   const styles =
     tone === "red"
-      ? "border-red-200 bg-red-50 text-red-800"
-      : "border-amber-200 bg-amber-50 text-amber-800";
+      ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+      : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
   return (
     <div className={`flex items-start gap-3 rounded-lg border p-3 ${styles}`}>
       <Icon className="mt-0.5 size-4 shrink-0" />

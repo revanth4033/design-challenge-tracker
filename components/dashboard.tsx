@@ -199,8 +199,10 @@ export function Dashboard() {
                     onClick={() => router.push(`/candidates/${c.id}`)}
                     className={cn(
                       "cursor-pointer",
-                      alert === "expired" && "bg-red-50/60 hover:bg-red-50",
-                      alert === "critical" && "bg-amber-50/60 hover:bg-amber-50",
+                      alert === "expired" &&
+                        "bg-red-50/60 hover:bg-red-50 dark:bg-red-950/40 dark:hover:bg-red-950/60",
+                      alert === "critical" &&
+                        "bg-amber-50/60 hover:bg-amber-50 dark:bg-amber-950/40 dark:hover:bg-amber-950/55",
                     )}
                   >
                     <TableCell>
@@ -268,13 +270,13 @@ export function Dashboard() {
           Timers update every second and are calculated from stored start times. Synced live across
           all devices.
         </p>
-        <p className="border-t pt-3 text-center text-xs text-muted-foreground">
+        <p className="border-t pt-4 text-center text-base text-muted-foreground">
           Designed &amp; developed by{" "}
           <a
             href="https://www.linkedin.com/in/revanth-banisetti-9401ba21a/"
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-foreground hover:underline"
+            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
           >
             Revanth Banisetti
           </a>{" "}
