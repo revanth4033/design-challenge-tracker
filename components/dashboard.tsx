@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, ChevronRight, AlertTriangle, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { Search, ArrowUpDown, ChevronRight, AlertTriangle } from "lucide-react";
 import {
   useClock,
   useTracker,
@@ -51,28 +51,13 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export function Dashboard() {
+  const router = useRouter();
   const mounted = useMounted();
   const candidates = useTracker((s) => s.candidates);
   const challenges = useTracker((s) => s.challenges);
   const loaded = useTracker((s) => s.loaded);
   const error = useTracker((s) => s.error);
-  const resetToSheet = useTracker((s) => s.resetToSheet);
   const ready = mounted && loaded;
-
-  async function handleReset() {
-    if (
-      !confirm(
-        "Reset all candidates back to the sheet data?\nThis wipes current statuses, timers, and feedback for everyone.",
-      )
-    )
-      return;
-    try {
-      await resetToSheet();
-      toast.success("Reset to sheet data");
-    } catch {
-      toast.error("Could not reset");
-    }
-  }
 
   const { search, statusFilter, sortBy, setSearch, setStatusFilter, setSortBy } =
     useDashboardUi();
@@ -129,20 +114,9 @@ export function Dashboard() {
             Live tracking for all design challenges.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={handleReset}
-          >
-            <RotateCcw className="size-3.5" />
-            Reset to sheet
-          </Button>
-          <Button render={<Link href="/candidates/new" />} size="sm">
-            Add candidate
-          </Button>
-        </div>
+        <Button render={<Link href="/candidates/new" />} size="sm">
+          Add candidate
+        </Button>
       </header>
 
       <StatCards stats={ready ? stats : null} />
@@ -222,7 +196,9 @@ export function Dashboard() {
                 return (
                   <TableRow
                     key={c.id}
+                    onClick={() => router.push(`/candidates/${c.id}`)}
                     className={cn(
+                      "cursor-pointer",
                       alert === "expired" && "bg-red-50/60 hover:bg-red-50",
                       alert === "critical" && "bg-amber-50/60 hover:bg-amber-50",
                     )}
@@ -261,7 +237,10 @@ export function Dashboard() {
                       <StatusBadge status={c.status} endsAt={c.endsAt} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div
+                        className="flex items-center justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {c.status === "NOT_STARTED" && (
                           <StartButton candidate={c} challenges={challenges} />
                         )}
@@ -283,11 +262,25 @@ export function Dashboard() {
         </Table>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {ready ? `Showing ${visible.length} of ${candidates.length} candidates · ` : ""}
-        Timers update every second and are calculated from stored start times. All data is saved in
-        this browser.
-      </p>
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          {ready ? `Showing ${visible.length} of ${candidates.length} candidates · ` : ""}
+          Timers update every second and are calculated from stored start times. Synced live across
+          all devices.
+        </p>
+        <p className="border-t pt-3 text-center text-xs text-muted-foreground">
+          Designed &amp; developed by{" "}
+          <a
+            href="https://www.linkedin.com/in/revanth-banisetti-9401ba21a/"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-foreground hover:underline"
+          >
+            Revanth Banisetti
+          </a>{" "}
+          (UI Designer @ Lollypop Design Studio)
+        </p>
+      </div>
     </div>
   );
 }

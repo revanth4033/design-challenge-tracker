@@ -60,7 +60,7 @@ export function statusDisplay(
     case "REJECTED":
       return {
         label: "Rejected",
-        className: "bg-red-100 text-red-700 border-red-200",
+        className: "bg-red-600 text-white border-red-600",
       };
     case "ABSENT":
       return {
